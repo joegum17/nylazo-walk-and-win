@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { BASE_QUESTS, specialQuestFor } from "@/lib/game/quests";
+import { questsFor, specialQuestFor } from "@/lib/game/quests";
 import type { DayState, BossKey } from "@/lib/game/types";
 import { msUntilMidnight } from "@/lib/game/storage";
 
@@ -7,6 +7,7 @@ interface Props {
   day: DayState;
   boss: BossKey;
   onComplete: (questId: string) => void;
+  onStart?: (questId: string) => void;
   onEnterBoss: () => void;
   disabled?: boolean;
 }
@@ -19,17 +20,18 @@ function fmtCountdown(ms: number) {
   return `${h} ชม. ${m} นาที`;
 }
 
-export function QuestBoard({ day, boss, onComplete, onEnterBoss, disabled }: Props) {
+export function QuestBoard({ day, boss, onComplete, onStart, onEnterBoss, disabled }: Props) {
   const [, force] = useState(0);
   useEffect(() => {
-    const t = setInterval(() => force((n) => n + 1), 30_000);
+    const t = setInterval(() => force((n) => n + 1), 15_000);
     return () => clearInterval(t);
   }, []);
 
+  const defs = questsFor(day.mode);
   const special = specialQuestFor(boss);
   const allRows = [
-    ...BASE_QUESTS.map((q) => ({ id: q.id, title: q.title, detail: q.detail, opensAt: q.opensAt, type: q.type, target: q.target })),
-    { id: "special", title: special.title, detail: special.detail, opensAt: 0, type: "special" as const, target: undefined },
+    ...defs.map((q) => ({ id: q.id, title: q.title, detail: q.detail, opensAt: q.opensAt, type: q.type, target: q.target, expireMin: q.expireMin })),
+    { id: "special", title: special.title, detail: special.detail, opensAt: 0, type: "special" as const, target: undefined, expireMin: undefined },
   ];
 
   const completedCount = day.quests.filter((q) => q.completed).length;
@@ -39,7 +41,7 @@ export function QuestBoard({ day, boss, onComplete, onEnterBoss, disabled }: Pro
     <div className="wood-plank rounded-2xl p-4 sm:p-5" style={{ fontFamily: "var(--font-board), var(--font-thai)" }}>
       <div className="mb-3 flex items-center justify-between gap-2 text-parchment">
         <h2 className="font-display text-xl font-bold" style={{ color: "var(--parchment)" }}>
-          📜 กระดานเควสต์ประจำวัน
+          📜 กระดานเควสต์ ({day.mode === "hard" ? "Hard" : "Normal"})
         </h2>
         <span className="rounded-full bg-black/30 px-3 py-1 text-xs" style={{ color: "var(--parchment)" }}>
           รีเฟรชใน {fmtCountdown(msUntilMidnight())}
@@ -55,6 +57,38 @@ export function QuestBoard({ day, boss, onComplete, onEnterBoss, disabled }: Pro
             row.type === "steps" && row.target
               ? ` (${Math.min(day.steps, row.target)}/${row.target} ก้าว)`
               : "";
+
+          let expired = false;
+          let remainMs = 0;
+          if (row.expireMin && state.startedAt && !done) {
+            const end = state.startedAt + row.expireMin * 60_000;
+            remainMs = end - Date.now();
+            expired = remainMs <= 0;
+          }
+
+          const stepsTooFew = row.type === "steps" && row.target ? day.steps < row.target : false;
+          const buttonDisabled = disabled || done || !opened || stepsTooFew || expired;
+
+          function handleClick() {
+            if (row.expireMin && !state.startedAt && row.type === "checkin") {
+              onStart?.(row.id);
+              return;
+            }
+            onComplete(row.id);
+          }
+
+          const label = done
+            ? "สำเร็จ"
+            : expired
+              ? "หมดเวลา"
+              : row.expireMin && !state.startedAt && row.type === "checkin"
+                ? "เริ่มจับเวลา"
+                : row.type === "checkin"
+                  ? "เช็คอิน"
+                  : row.type === "steps"
+                    ? "เก็บรางวัล"
+                    : "ทำภารกิจ";
+
           return (
             <li
               key={row.id}
@@ -62,24 +96,30 @@ export function QuestBoard({ day, boss, onComplete, onEnterBoss, disabled }: Pro
             >
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
-                  <span className="text-base">{done ? "✅" : opened ? "🪵" : "⏳"}</span>
+                  <span className="text-base">{done ? "✅" : expired ? "💀" : opened ? "🪵" : "⏳"}</span>
                   <span className="font-semibold" style={{ color: "var(--ink)" }}>
                     {row.title}
                     <span className="text-xs text-muted-foreground">{progressLabel}</span>
                   </span>
                 </div>
                 <p className="ml-7 text-xs text-muted-foreground">
-                  {opened ? row.detail : `ปลดล็อกเวลา ${String(row.opensAt).padStart(2, "0")}:00 น.`}
+                  {opened
+                    ? expired
+                      ? "หมดเวลาแล้ว — รอวันใหม่"
+                      : row.expireMin && state.startedAt
+                        ? `เหลือเวลา ${Math.max(0, Math.floor(remainMs / 1000))} วินาที`
+                        : row.detail
+                    : `ปลดล็อกเวลา ${String(row.opensAt).padStart(2, "0")}:00 น.`}
                 </p>
               </div>
               <button
                 type="button"
-                disabled={disabled || done || !opened || (row.type === "steps" && row.target ? day.steps < row.target : false)}
-                onClick={() => onComplete(row.id)}
+                disabled={buttonDisabled && !(row.expireMin && !state.startedAt)}
+                onClick={handleClick}
                 className="shrink-0 rounded-full px-4 py-1.5 text-xs font-bold shadow disabled:opacity-50"
-                style={{ background: done ? "var(--muted)" : "var(--moss)", color: "var(--parchment)" }}
+                style={{ background: done ? "var(--muted)" : expired ? "#7a2222" : "var(--moss)", color: "var(--parchment)" }}
               >
-                {done ? "สำเร็จ" : row.type === "checkin" ? "เช็คอิน" : row.type === "steps" ? "เก็บรางวัล" : "ทำภารกิจ"}
+                {label}
               </button>
             </li>
           );

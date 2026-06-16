@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import villageBg from "@/assets/village-bg.webp.asset.json";
 import { Character } from "@/components/game/Character";
@@ -9,8 +9,11 @@ import { QuestBoard } from "@/components/game/QuestBoard";
 import { useAuth } from "@/hooks/useAuth";
 import { useSteps } from "@/hooks/useSteps";
 import { useWeather } from "@/hooks/useWeather";
-import { loadDay, loadPlayer, randomItem, saveDay, savePlayer, todayStr, freshDay } from "@/lib/game/storage";
-import type { DayState, Gender, PlayerState } from "@/lib/game/types";
+import {
+  loadDay, loadPlayer, randomItem, saveDay, savePlayer, todayStr, freshDay,
+  loadMode, saveMode,
+} from "@/lib/game/storage";
+import type { DayState, Gender, Mode, PlayerState } from "@/lib/game/types";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/")({
@@ -27,34 +30,41 @@ function Home() {
   const { user, loading } = useAuth();
   const nav = useNavigate();
   const weather = useWeather();
+  const [mode, setMode] = useState<Mode>(() => loadMode());
   const [player, setPlayer] = useState<PlayerState>(() => loadPlayer());
-  const [day, setDay] = useState<DayState>(() => loadDay(weather.boss));
+  const [day, setDay] = useState<DayState>(() => loadDay(weather.boss, mode));
   const { steps, setSteps, permission, request } = useSteps(day.steps);
   const [levelBurst, setLevelBurst] = useState(false);
+  const [devOpen, setDevOpen] = useState(false);
+  const logoTapsRef = useRef<{ count: number; last: number }>({ count: 0, last: 0 });
 
-  // Redirect to auth
   useEffect(() => {
     if (!loading && !user) nav({ to: "/auth" });
   }, [loading, user, nav]);
 
-  // Sync weather boss into day state once weather resolves (only if no quests completed yet)
+  // Reload day state when mode switches (separate inventories per mode)
+  useEffect(() => {
+    saveMode(mode);
+    const d = loadDay(weather.boss, mode);
+    setDay(d);
+    setSteps(d.steps);
+  }, [mode, weather.boss, setSteps]);
+
   useEffect(() => {
     if (!weather.loaded) return;
     setDay((d) => (d.weatherBoss === weather.boss ? d : { ...d, weatherBoss: weather.boss }));
   }, [weather.loaded, weather.boss]);
 
-  // Persist
   useEffect(() => { saveDay({ ...day, steps }); }, [day, steps]);
   useEffect(() => { savePlayer(player); }, [player]);
 
-  // Daily reset if date changed
   useEffect(() => {
     if (day.date !== todayStr()) {
-      const fresh = freshDay(weather.boss);
+      const fresh = freshDay(weather.boss, mode);
       setDay(fresh);
       setSteps(0);
     }
-  }, [day.date, weather.boss, setSteps]);
+  }, [day.date, weather.boss, mode, setSteps]);
 
   const dialogueOpen = !day.dialogueSeen;
   const blocked = dialogueOpen || day.locked;
@@ -67,6 +77,14 @@ function Home() {
     setPlayer((p) => ({ ...p, gender: p.gender === "boy" ? "girl" : ("boy" as Gender) }));
   }
 
+  function startQuestTimer(id: string) {
+    setDay((d) => ({
+      ...d,
+      quests: d.quests.map((q) => (q.id === id && !q.startedAt ? { ...q, startedAt: Date.now() } : q)),
+    }));
+    toast.message("⏱️ เริ่มจับเวลาเควสต์แล้ว!");
+  }
+
   function completeQuest(id: string) {
     setDay((d) => {
       if (d.locked) return d;
@@ -77,13 +95,39 @@ function Home() {
     });
   }
 
+  function devForceCompleteAll() {
+    setDay((d) => {
+      if (d.locked) return d;
+      const updated = d.quests.map((q) => ({ ...q, completed: true }));
+      const drops = Array.from({ length: 5 }).map(() => randomItem());
+      toast.success(`🛠️ DEV: ปลดล็อกครบ 5 เควสต์! รับไอเทม ${drops.join(", ")}`);
+      return { ...d, quests: updated, items: [...d.items, ...drops] };
+    });
+  }
+
+  function tapLogo() {
+    const now = Date.now();
+    const r = logoTapsRef.current;
+    if (now - r.last > 800) r.count = 0;
+    r.last = now;
+    r.count += 1;
+    if (r.count >= 5) {
+      r.count = 0;
+      setDevOpen(true);
+      toast.message("🛠️ Developer Debug Menu เปิดแล้ว");
+    }
+  }
+
   async function enterBoss() {
     const allDone = day.quests.filter((q) => q.completed).length >= 5;
     if (!allDone || day.bossDefeatedToday) return;
+    // Roll secret/variant boss (~15% chance)
+    const variant = Math.random() < 0.15;
+    setDay((d) => ({ ...d, variantBoss: variant }));
+    saveDay({ ...day, steps, variantBoss: variant });
     nav({ to: "/battle" });
   }
 
-  // Listen for win event from /battle (via storage)
   useEffect(() => {
     function onWin() {
       setDay((d) => {
@@ -148,21 +192,28 @@ function Home() {
         fontFamily: "var(--font-thai)",
       }}
     >
-      {/* Top bar */}
       <header className="sticky top-0 z-10 flex items-center justify-between gap-2 border-b border-[var(--border)] bg-[var(--parchment)]/85 px-4 py-2 backdrop-blur">
-        <Link to="/" className="font-display text-lg font-extrabold tracking-wider">Nylazo</Link>
-        <div className="flex items-center gap-2 text-xs">
+        <button
+          type="button"
+          onClick={tapLogo}
+          className="font-display text-lg font-extrabold tracking-wider"
+          aria-label="โลโก้เกม (แตะ 5 ครั้งเพื่อเปิดโหมดผู้พัฒนา)"
+          title="แตะ 5 ครั้งเพื่อเปิดโหมดผู้พัฒนา"
+        >
+          Nylazo
+        </button>
+        <div className="flex flex-wrap items-center gap-2 text-xs">
           <span className="rounded-full bg-[var(--moss)] px-3 py-1 font-bold text-[var(--parchment)]">
             ⚔️ Lv. {player.level}
           </span>
           <span className="rounded-full bg-[var(--wood)] px-3 py-1 font-bold text-[var(--parchment)]">
             🛡️ {player.shields}/{player.level}
           </span>
-          <Link
-            to="/leaderboard"
-            className="rounded-full border border-[var(--border)] bg-white px-3 py-1 font-semibold"
-          >
+          <Link to="/leaderboard" className="rounded-full border border-[var(--border)] bg-white px-3 py-1 font-semibold">
             🏆 อันดับ
+          </Link>
+          <Link to="/credits" className="rounded-full border border-[var(--border)] bg-white px-3 py-1 font-semibold">
+            📜 เครดิต
           </Link>
           <button
             onClick={() => supabase.auth.signOut().then(() => nav({ to: "/auth" }))}
@@ -174,7 +225,6 @@ function Home() {
         </div>
       </header>
 
-      {/* Hero area */}
       <section className="mx-auto flex max-w-3xl flex-col items-center px-4 pt-4">
         <div className="text-center">
           <h1 className="font-display text-3xl font-black tracking-wider">หมู่บ้าน Nylazo</h1>
@@ -185,7 +235,27 @@ function Home() {
           </p>
         </div>
 
-        {/* Character + Ring */}
+        {/* Difficulty toggle */}
+        <div className="mt-3 inline-flex overflow-hidden rounded-full border border-[var(--wood-deep)] bg-white shadow-sm">
+          {(["normal", "hard"] as const).map((m) => (
+            <button
+              key={m}
+              type="button"
+              onClick={() => setMode(m)}
+              className="px-4 py-1.5 text-xs font-bold transition"
+              style={{
+                background: mode === m ? "var(--wood-deep)" : "transparent",
+                color: mode === m ? "var(--parchment)" : "var(--ink)",
+              }}
+            >
+              {m === "normal" ? "🌿 Normal" : "🔥 Hard"}
+            </button>
+          ))}
+        </div>
+        <p className="mt-1 text-[10px] text-muted-foreground">
+          กระเป๋าไอเทมโหมด Normal และ Hard แยกขาดจากกัน
+        </p>
+
         <div className="relative my-4 grid place-items-center" style={{ height: ringSize + 20, width: ringSize + 20 }}>
           <ItemRing items={day.items} size={ringSize} />
           <Character gender={player.gender} onFlip={blocked ? undefined : flip} size={200} />
@@ -196,39 +266,31 @@ function Home() {
           )}
         </div>
 
-        {/* Step counter / permission */}
         <div className="mb-3 flex flex-wrap items-center justify-center gap-2 text-xs">
           <span className="rounded-full bg-[var(--parchment)]/90 px-3 py-1 font-semibold shadow-sm">
             👣 ก้าววันนี้: <b>{steps}</b>
           </span>
           {permission === "prompt" && (
-            <button
-              type="button"
-              onClick={request}
-              className="rounded-full bg-[var(--moss)] px-3 py-1 font-bold text-[var(--parchment)]"
-            >
+            <button type="button" onClick={request}
+              className="rounded-full bg-[var(--moss)] px-3 py-1 font-bold text-[var(--parchment)]">
               เปิดเซ็นเซอร์นับก้าว
             </button>
           )}
           {permission === "denied" && <span className="text-destructive">ไม่อนุญาตเซ็นเซอร์</span>}
           {permission === "unsupported" && <span>เบราว์เซอร์นี้ไม่รองรับเซ็นเซอร์</span>}
-          {/* Manual +50 steps button for testing on desktop */}
-          <button
-            type="button"
-            onClick={() => setSteps((s) => s + 50)}
+          <button type="button" onClick={() => setSteps((s) => s + 50)}
             className="rounded-full border border-dashed border-[var(--border)] bg-white px-2 py-1 text-[10px] text-muted-foreground"
-            disabled={blocked}
-          >
+            disabled={blocked}>
             +50 ก้าว (ทดสอบ)
           </button>
         </div>
 
-        {/* Quest board */}
         <div className="w-full pb-10">
           <QuestBoard
             day={day}
             boss={day.weatherBoss}
             onComplete={completeQuest}
+            onStart={startQuestTimer}
             onEnterBoss={enterBoss}
             disabled={blocked}
           />
@@ -241,6 +303,65 @@ function Home() {
       </section>
 
       {dialogueOpen && <DialogueBox onDone={dismissDialogue} />}
+
+      {/* Developer Debug Menu */}
+      {devOpen && (
+        <div
+          className="fixed inset-0 z-[60] grid place-items-center bg-black/60 p-4"
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setDevOpen(false)}
+        >
+          <div
+            className="w-full max-w-sm rounded-2xl border-2 border-yellow-500 bg-black/90 p-5 text-yellow-300 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+            style={{ fontFamily: "ui-monospace, 'SF Mono', monospace" }}
+          >
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-lg font-extrabold">🛠️ DEV DEBUG MENU</h2>
+              <button onClick={() => setDevOpen(false)} className="rounded bg-yellow-500/20 px-2 text-sm">✕</button>
+            </div>
+            <p className="mb-3 text-xs opacity-80">โหมดทดลองสำหรับนักพัฒนาเท่านั้น</p>
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={() => { devForceCompleteAll(); setDevOpen(false); }}
+                className="w-full rounded-lg bg-yellow-500 px-3 py-2 text-sm font-bold text-black hover:bg-yellow-400"
+              >
+                ⚡ Force Complete All Quests (5/5)
+              </button>
+              <button
+                type="button"
+                onClick={() => { setSteps((s) => s + 2000); setDevOpen(false); toast.message("🛠️ +2000 steps"); }}
+                className="w-full rounded-lg border border-yellow-500 px-3 py-2 text-sm font-semibold"
+              >
+                +2,000 ก้าว
+              </button>
+              <button
+                type="button"
+                onClick={() => { setPlayer((p) => ({ ...p, level: p.level + 1, shields: 0 })); setDevOpen(false); toast.message("🛠️ Level +1"); }}
+                className="w-full rounded-lg border border-yellow-500 px-3 py-2 text-sm font-semibold"
+              >
+                +1 Level
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const fresh = freshDay(weather.boss, mode);
+                  setDay(fresh);
+                  setSteps(0);
+                  setDevOpen(false);
+                  toast.message("🛠️ รีเซ็ตวันใหม่");
+                }}
+                className="w-full rounded-lg border border-yellow-500 px-3 py-2 text-sm font-semibold"
+              >
+                ♻️ Reset Today (mode: {mode})
+              </button>
+            </div>
+            <p className="mt-3 text-[10px] opacity-60">เคล็ดลับ: แตะโลโก้ "Nylazo" 5 ครั้งติดเพื่อเปิดเมนูนี้</p>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
