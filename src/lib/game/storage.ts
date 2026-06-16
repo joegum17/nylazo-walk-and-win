@@ -1,8 +1,9 @@
-import type { DayState, Item, PlayerState, BossKey } from "./types";
-import { BASE_QUESTS } from "./quests";
+import type { DayState, Item, PlayerState, BossKey, Mode } from "./types";
+import { questsFor } from "./quests";
 
-const DAY_KEY = "nylazo:day";
 const PLAYER_KEY = "nylazo:player";
+const MODE_KEY = "nylazo:mode";
+const dayKey = (m: Mode) => `nylazo:day:${m}`;
 
 export function todayStr(): string {
   const d = new Date();
@@ -23,11 +24,24 @@ export function savePlayer(p: PlayerState) {
   localStorage.setItem(PLAYER_KEY, JSON.stringify(p));
 }
 
-export function freshDay(boss: BossKey): DayState {
+export function loadMode(): Mode {
+  if (typeof window === "undefined") return "normal";
+  const m = localStorage.getItem(MODE_KEY);
+  return m === "hard" ? "hard" : "normal";
+}
+
+export function saveMode(m: Mode) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(MODE_KEY, m);
+}
+
+export function freshDay(boss: BossKey, mode: Mode): DayState {
+  const defs = questsFor(mode);
   return {
     date: todayStr(),
+    mode,
     quests: [
-      ...BASE_QUESTS.map((q) => ({ id: q.id, completed: false, progress: 0 })),
+      ...defs.map((q) => ({ id: q.id, completed: false, progress: 0 })),
       { id: "special", completed: false, progress: 0 },
     ],
     items: [],
@@ -39,23 +53,23 @@ export function freshDay(boss: BossKey): DayState {
   };
 }
 
-export function loadDay(boss: BossKey): DayState {
-  if (typeof window === "undefined") return freshDay(boss);
+export function loadDay(boss: BossKey, mode: Mode): DayState {
+  if (typeof window === "undefined") return freshDay(boss, mode);
   try {
-    const raw = localStorage.getItem(DAY_KEY);
+    const raw = localStorage.getItem(dayKey(mode));
     if (raw) {
       const parsed: DayState = JSON.parse(raw);
-      if (parsed.date === todayStr()) return parsed;
+      if (parsed.date === todayStr()) return { ...parsed, mode };
     }
   } catch { /* ignore */ }
-  const d = freshDay(boss);
-  localStorage.setItem(DAY_KEY, JSON.stringify(d));
+  const d = freshDay(boss, mode);
+  localStorage.setItem(dayKey(mode), JSON.stringify(d));
   return d;
 }
 
 export function saveDay(d: DayState) {
   if (typeof window === "undefined") return;
-  localStorage.setItem(DAY_KEY, JSON.stringify(d));
+  localStorage.setItem(dayKey(d.mode), JSON.stringify(d));
 }
 
 export function randomItem(): Item {
