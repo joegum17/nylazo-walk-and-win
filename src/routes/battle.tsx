@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { BossArena } from "@/components/game/BossArena";
 import { useAuth } from "@/hooks/useAuth";
-import { loadDay, loadPlayer } from "@/lib/game/storage";
+import { loadDay, loadMode, loadPlayer } from "@/lib/game/storage";
 import type { DayState, PlayerState } from "@/lib/game/types";
 import villageBg from "@/assets/village-bg.webp.asset.json";
 
@@ -24,7 +24,8 @@ function Battle() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    setDay(loadDay("fire"));
+    const m = loadMode();
+    setDay(loadDay("fire", m));
     setPlayer(loadPlayer());
   }, []);
 
@@ -36,7 +37,6 @@ function Battle() {
     return <main className="grid min-h-screen place-items-center">กำลังเข้าสู่ฉากต่อสู้...</main>;
   }
 
-  // Block re-entry if already defeated today
   if (day.bossDefeatedToday) {
     return (
       <main className="grid min-h-screen place-items-center p-6 text-center">
@@ -44,10 +44,8 @@ function Battle() {
           <div className="text-4xl">🏆</div>
           <p className="mt-2 font-semibold">วันนี้พิชิตบอสไปแล้ว</p>
           <p className="text-xs text-muted-foreground">กลับมาใหม่พรุ่งนี้ตอนเควสต์รีเฟรช</p>
-          <button
-            onClick={() => nav({ to: "/" })}
-            className="mt-4 rounded-full bg-[var(--moss)] px-4 py-2 text-sm font-bold text-[var(--parchment)]"
-          >
+          <button onClick={() => nav({ to: "/" })}
+            className="mt-4 rounded-full bg-[var(--moss)] px-4 py-2 text-sm font-bold text-[var(--parchment)]">
             กลับหน้าหลัก
           </button>
         </div>
@@ -69,9 +67,9 @@ function Battle() {
         boss={day.weatherBoss}
         gender={player.gender}
         steps={day.steps}
+        variant={!!day.variantBoss}
         onWin={() => {
           window.dispatchEvent(new CustomEvent("nylazo:boss-win"));
-          // small delay so index page can update before redirect
           setTimeout(() => nav({ to: "/" }), 800);
         }}
         onFlee={() => nav({ to: "/" })}
