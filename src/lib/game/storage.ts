@@ -11,12 +11,25 @@ export function todayStr(): string {
 }
 
 export function loadPlayer(): PlayerState {
-  if (typeof window === "undefined") return { gender: "boy", level: 1, shields: 0 };
+  const fallback: PlayerState = {
+    gender: "boy", level: 1, shields: 0,
+    dialogueSeen: false, accessories: [], equipped: [],
+  };
+  if (typeof window === "undefined") return fallback;
   try {
     const raw = localStorage.getItem(PLAYER_KEY);
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      const p = JSON.parse(raw) as PlayerState;
+      return {
+        ...fallback,
+        ...p,
+        accessories: p.accessories ?? [],
+        equipped: p.equipped ?? [],
+        dialogueSeen: p.dialogueSeen ?? false,
+      };
+    }
   } catch { /* ignore */ }
-  return { gender: "boy", level: 1, shields: 0 };
+  return fallback;
 }
 
 export function savePlayer(p: PlayerState) {

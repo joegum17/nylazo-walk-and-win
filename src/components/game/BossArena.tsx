@@ -8,6 +8,7 @@ interface Props {
   gender: Gender;
   steps: number;
   variant?: boolean;
+  equippedBonus?: number;
   onWin: () => void;
   onFlee: () => void;
 }
@@ -23,7 +24,7 @@ function seasonalSecret() {
   return { label: "ภูตเก็บเกี่ยวสีทอง", hue: 45, emoji: "🍂" };
 }
 
-export function BossArena({ boss, gender, steps, variant = false, onWin, onFlee }: Props) {
+export function BossArena({ boss, gender, steps, variant = false, equippedBonus = 0, onWin, onFlee }: Props) {
   const def = BOSSES[boss];
   const isVariant = variant;
   const secret = useMemo(() => seasonalSecret(), []);
@@ -35,7 +36,7 @@ export function BossArena({ boss, gender, steps, variant = false, onWin, onFlee 
   const [won, setWon] = useState(false);
   const idRef = useRef(0);
 
-  const damage = Math.max(25, Math.floor(30 + steps / 10));
+  const damage = Math.max(25, Math.floor(30 + steps / 10) + equippedBonus);
 
   function attack() {
     if (won) return;

@@ -1,9 +1,11 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 import { BossArena } from "@/components/game/BossArena";
 import { useAuth } from "@/hooks/useAuth";
-import { loadDay, loadMode, loadPlayer } from "@/lib/game/storage";
+import { loadDay, loadMode, loadPlayer, savePlayer, saveDay } from "@/lib/game/storage";
 import type { DayState, PlayerState } from "@/lib/game/types";
+import { ACCESSORIES, dropFromBoss } from "@/lib/game/accessories";
 import villageBg from "@/assets/village-bg.webp.asset.json";
 
 export const Route = createFileRoute("/battle")({
@@ -33,11 +35,16 @@ function Battle() {
     if (!loading && !user) nav({ to: "/auth" });
   }, [loading, user, nav]);
 
+  const equippedBonus = useMemo(() => {
+    if (!player?.equipped?.length) return 0;
+    return player.equipped.reduce((sum, id) => sum + (ACCESSORIES[id]?.bonus ?? 0), 0);
+  }, [player]);
+
   if (!day || !player) {
     return <main className="grid min-h-screen place-items-center">กำลังเข้าสู่ฉากต่อสู้...</main>;
   }
 
-  if (day.bossDefeatedToday) {
+  if (day.bossDefeatedToday || day.locked) {
     return (
       <main className="grid min-h-screen place-items-center p-6 text-center">
         <div className="parchment-panel rounded-2xl p-6">
@@ -51,6 +58,40 @@ function Battle() {
         </div>
       </main>
     );
+  }
+
+  function handleWin() {
+    if (!day || !player) return;
+    // Drop exactly 1 accessory keyed to the boss
+    const drop = dropFromBoss(day.weatherBoss);
+    const ownedSet = new Set(player.accessories ?? []);
+    const alreadyOwned = ownedSet.has(drop.id);
+    ownedSet.add(drop.id);
+
+    // Update + persist player (shield + possible level up)
+    const newShields = player.shields + 1;
+    const leveledUp = newShields >= player.level;
+    const nextPlayer: PlayerState = {
+      ...player,
+      accessories: Array.from(ownedSet),
+      equipped: player.equipped ?? [],
+      shields: leveledUp ? newShields - player.level : newShields,
+      level: leveledUp ? player.level + 1 : player.level,
+    };
+    savePlayer(nextPlayer);
+
+    // Lock day regardless of level (one boss per day, then locked)
+    const nextDay: DayState = { ...day, bossDefeatedToday: true, locked: true };
+    saveDay(nextDay);
+
+    toast.success(
+      alreadyOwned
+        ? `บอสดรอป ${drop.emoji} ${drop.name} (มีอยู่แล้ว)`
+        : `ได้รับเครื่องประดับใหม่: ${drop.emoji} ${drop.name}!`,
+    );
+    if (leveledUp) toast.success(`✨ Level Up! เลเวล ${nextPlayer.level}`);
+
+    setTimeout(() => nav({ to: "/" }), 900);
   }
 
   return (
@@ -68,10 +109,8 @@ function Battle() {
         gender={player.gender}
         steps={day.steps}
         variant={!!day.variantBoss}
-        onWin={() => {
-          window.dispatchEvent(new CustomEvent("nylazo:boss-win"));
-          setTimeout(() => nav({ to: "/" }), 800);
-        }}
+        equippedBonus={equippedBonus}
+        onWin={handleWin}
         onFlee={() => nav({ to: "/" })}
       />
     </main>

@@ -7,7 +7,7 @@ export interface QuestState {
   id: string;
   completed: boolean;
   progress: number;
-  startedAt?: number; // ms epoch — for hard-mode fluid expiration
+  startedAt?: number;
 }
 
 export interface DayState {
@@ -17,14 +17,17 @@ export interface DayState {
   items: Item[];
   steps: number;
   bossDefeatedToday: boolean;
-  dialogueSeen: boolean;
+  dialogueSeen: boolean; // legacy/per-day flag, kept for migration
   locked: boolean;
   weatherBoss: BossKey;
-  variantBoss?: boolean; // secret/variant rolled for the boss fight
+  variantBoss?: boolean;
 }
 
 export interface PlayerState {
   gender: Gender;
   level: number;
   shields: number;
+  dialogueSeen?: boolean;       // global one-time intro dialogue
+  accessories?: string[];        // owned accessory ids
+  equipped?: string[];           // currently equipped accessory ids
 }
