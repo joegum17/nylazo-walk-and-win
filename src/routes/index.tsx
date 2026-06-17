@@ -14,6 +14,7 @@ import {
   loadMode, saveMode,
 } from "@/lib/game/storage";
 import type { DayState, Gender, Mode, PlayerState } from "@/lib/game/types";
+import { ACCESSORIES } from "@/lib/game/accessories";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/")({
@@ -26,6 +27,8 @@ export const Route = createFileRoute("/")({
   component: Home,
 });
 
+const MAX_EQUIPPED = 3;
+
 function Home() {
   const { user, loading } = useAuth();
   const nav = useNavigate();
@@ -34,7 +37,6 @@ function Home() {
   const [player, setPlayer] = useState<PlayerState>(() => loadPlayer());
   const [day, setDay] = useState<DayState>(() => loadDay(weather.boss, mode));
   const { steps, setSteps, permission, request } = useSteps(day.steps);
-  const [levelBurst, setLevelBurst] = useState(false);
   const [devOpen, setDevOpen] = useState(false);
   const logoTapsRef = useRef<{ count: number; last: number }>({ count: 0, last: 0 });
 
@@ -42,7 +44,8 @@ function Home() {
     if (!loading && !user) nav({ to: "/auth" });
   }, [loading, user, nav]);
 
-  // Reload day state when mode switches (separate inventories per mode)
+  // Reload day state when mode switches (separate inventories per mode).
+  // Dialogue is global (player.dialogueSeen) so it will NOT replay on mode switch.
   useEffect(() => {
     saveMode(mode);
     const d = loadDay(weather.boss, mode);
@@ -56,7 +59,7 @@ function Home() {
   }, [weather.loaded, weather.boss]);
 
   useEffect(() => { saveDay({ ...day, steps }); }, [day, steps]);
-  useEffect(() => { savePlayer(player); }, [player]);
+  useEffect(() => { savePlayer(player); syncProfile(player, steps); }, [player, steps]);
 
   useEffect(() => {
     if (day.date !== todayStr()) {
@@ -66,11 +69,11 @@ function Home() {
     }
   }, [day.date, weather.boss, mode, setSteps]);
 
-  const dialogueOpen = !day.dialogueSeen;
-  const blocked = dialogueOpen || day.locked;
+  const dialogueOpen = !player.dialogueSeen;
+  const blocked = dialogueOpen || day.locked || day.bossDefeatedToday;
 
   function dismissDialogue() {
-    setDay((d) => ({ ...d, dialogueSeen: true }));
+    setPlayer((p) => ({ ...p, dialogueSeen: true }));
   }
 
   function flip() {
@@ -87,7 +90,7 @@ function Home() {
 
   function completeQuest(id: string) {
     setDay((d) => {
-      if (d.locked) return d;
+      if (d.locked || d.bossDefeatedToday) return d;
       const updated = d.quests.map((q) => (q.id === id && !q.completed ? { ...q, completed: true } : q));
       const drop = randomItem();
       toast.success(`สำเร็จ! ได้รับไอเทม: ${drop}`);
@@ -97,7 +100,7 @@ function Home() {
 
   function devForceCompleteAll() {
     setDay((d) => {
-      if (d.locked) return d;
+      if (d.locked || d.bossDefeatedToday) return d;
       const updated = d.quests.map((q) => ({ ...q, completed: true }));
       const drops = Array.from({ length: 5 }).map(() => randomItem());
       toast.success(`🛠️ DEV: ปลดล็อกครบ 5 เควสต์! รับไอเทม ${drops.join(", ")}`);
@@ -120,40 +123,29 @@ function Home() {
 
   async function enterBoss() {
     const allDone = day.quests.filter((q) => q.completed).length >= 5;
-    if (!allDone || day.bossDefeatedToday) return;
-    // Roll secret/variant boss (~15% chance)
+    if (!allDone || day.bossDefeatedToday || day.locked) return;
     const variant = Math.random() < 0.15;
-    setDay((d) => ({ ...d, variantBoss: variant }));
-    saveDay({ ...day, steps, variantBoss: variant });
+    const next = { ...day, steps, variantBoss: variant };
+    setDay(next);
+    saveDay(next);
     nav({ to: "/battle" });
   }
 
-  useEffect(() => {
-    function onWin() {
-      setDay((d) => {
-        if (d.bossDefeatedToday) return d;
-        return { ...d, bossDefeatedToday: true };
-      });
-      setPlayer((p) => {
-        const newShields = p.shields + 1;
-        const need = p.level;
-        if (newShields >= need) {
-          setLevelBurst(true);
-          setTimeout(() => setLevelBurst(false), 1200);
-          setDay((d) => ({ ...d, locked: true }));
-          toast.success(`✨ Level Up! เลเวล ${p.level + 1}`);
-          const next = { gender: p.gender, level: p.level + 1, shields: newShields - need };
-          syncProfile(next, steps);
-          return next;
+  function toggleEquip(id: string) {
+    setPlayer((p) => {
+      const eq = new Set(p.equipped ?? []);
+      if (eq.has(id)) {
+        eq.delete(id);
+      } else {
+        if (eq.size >= MAX_EQUIPPED) {
+          toast.error(`สวมใส่ได้สูงสุด ${MAX_EQUIPPED} ชิ้น`);
+          return p;
         }
-        const next = { ...p, shields: newShields };
-        syncProfile(next, steps);
-        return next;
-      });
-    }
-    window.addEventListener("nylazo:boss-win", onWin);
-    return () => window.removeEventListener("nylazo:boss-win", onWin);
-  }, [steps]);
+        eq.add(id);
+      }
+      return { ...p, equipped: Array.from(eq) };
+    });
+  }
 
   async function syncProfile(p: PlayerState, totalSteps: number) {
     if (!user) return;
@@ -172,6 +164,11 @@ function Home() {
   }
 
   const ringSize = useMemo(() => 320, []);
+  const owned = player.accessories ?? [];
+  const equipped = new Set(player.equipped ?? []);
+  const equippedBonus = (player.equipped ?? []).reduce(
+    (s, id) => s + (ACCESSORIES[id]?.bonus ?? 0), 0,
+  );
 
   if (loading || !user) {
     return (
@@ -235,7 +232,6 @@ function Home() {
           </p>
         </div>
 
-        {/* Difficulty toggle */}
         <div className="mt-3 inline-flex overflow-hidden rounded-full border border-[var(--wood-deep)] bg-white shadow-sm">
           {(["normal", "hard"] as const).map((m) => (
             <button
@@ -259,11 +255,6 @@ function Home() {
         <div className="relative my-4 grid place-items-center" style={{ height: ringSize + 20, width: ringSize + 20 }}>
           <ItemRing items={day.items} size={ringSize} />
           <Character gender={player.gender} onFlip={blocked ? undefined : flip} size={200} />
-          {levelBurst && (
-            <div className="pointer-events-none absolute inset-0 grid place-items-center text-5xl animate-burst">
-              ✨ LEVEL UP ✨
-            </div>
-          )}
         </div>
 
         <div className="mb-3 flex flex-wrap items-center justify-center gap-2 text-xs">
@@ -285,7 +276,7 @@ function Home() {
           </button>
         </div>
 
-        <div className="w-full pb-10">
+        <div className="w-full pb-6">
           <QuestBoard
             day={day}
             boss={day.weatherBoss}
@@ -294,10 +285,61 @@ function Home() {
             onEnterBoss={enterBoss}
             disabled={blocked}
           />
-          {day.locked && (
+          {(day.locked || day.bossDefeatedToday) && (
             <p className="mt-3 text-center text-xs italic text-muted-foreground">
-              🔒 วันนี้ผ่านการเลเวลอัปแล้ว เควสต์จะปลดล็อกอีกครั้งในวันถัดไป
+              🔒 วันนี้พิชิตบอสไปแล้ว — เควสต์และการตีบอสจะปลดล็อกอีกครั้งในวันถัดไป
             </p>
+          )}
+        </div>
+
+        {/* Equipment / Accessories panel */}
+        <div className="mb-10 w-full parchment-panel rounded-2xl p-4">
+          <div className="mb-2 flex items-baseline justify-between">
+            <h3 className="font-display text-lg font-bold">💍 เครื่องประดับ</h3>
+            <span className="text-xs text-muted-foreground">
+              สวม {equipped.size}/{MAX_EQUIPPED} · โบนัสรวม +{equippedBonus} พลังตี
+            </span>
+          </div>
+          {owned.length === 0 ? (
+            <p className="text-sm italic text-muted-foreground">
+              ยังไม่มีเครื่องประดับ — พิชิตบอสเพื่อรับ 1 ชิ้นต่อวัน
+            </p>
+          ) : (
+            <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              {owned.map((id) => {
+                const a = ACCESSORIES[id];
+                if (!a) return null;
+                const isOn = equipped.has(id);
+                return (
+                  <li
+                    key={id}
+                    className="flex items-center gap-3 rounded-xl border border-[var(--border)] bg-white/70 p-3"
+                  >
+                    <div className="grid h-12 w-12 place-items-center rounded-full bg-[var(--parchment-deep)] text-2xl">
+                      {a.emoji}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="font-semibold leading-tight">{a.name}</div>
+                      <div className="text-[11px] text-muted-foreground">
+                        +{a.bonus} ดาเมจ · ช่อง {a.slot}
+                      </div>
+                      <div className="truncate text-[11px] italic text-muted-foreground">{a.flavor}</div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => toggleEquip(id)}
+                      className="shrink-0 rounded-full px-3 py-1.5 text-xs font-bold shadow"
+                      style={{
+                        background: isOn ? "var(--wood-deep)" : "var(--moss)",
+                        color: "var(--parchment)",
+                      }}
+                    >
+                      {isOn ? "ถอด" : "สวมใส่"}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
           )}
         </div>
       </section>
@@ -343,6 +385,13 @@ function Home() {
                 className="w-full rounded-lg border border-yellow-500 px-3 py-2 text-sm font-semibold"
               >
                 +1 Level
+              </button>
+              <button
+                type="button"
+                onClick={() => { setPlayer((p) => ({ ...p, dialogueSeen: false })); setDevOpen(false); toast.message("🛠️ รีเซ็ตบทสนทนา"); }}
+                className="w-full rounded-lg border border-yellow-500 px-3 py-2 text-sm font-semibold"
+              >
+                💬 เล่นบทสนทนาอีกครั้ง
               </button>
               <button
                 type="button"
