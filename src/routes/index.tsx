@@ -430,6 +430,53 @@ function Home() {
           </div>
         </div>
       )}
+
+      {/* Help Note — letter from the heroes. Open via "?" button in header. */}
+      {helpOpen && (
+        <div
+          className="fixed inset-0 z-[55] grid place-items-center bg-black/55 p-4"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div
+            className="parchment-panel relative w-full max-w-lg rounded-2xl p-6 shadow-2xl"
+            style={{
+              backgroundImage:
+                "repeating-linear-gradient(0deg, transparent 0 28px, rgba(120,80,40,0.08) 28px 29px)",
+              border: "2px solid var(--wood-deep)",
+            }}
+          >
+            <div className="mb-3 flex items-center gap-3">
+              <div className="grid h-12 w-12 place-items-center rounded-full bg-[var(--wood-deep)] text-2xl text-[var(--parchment)]">
+                ✉️
+              </div>
+              <div>
+                <div className="font-display text-lg leading-none">บันทึกจากเหล่าฮีโร่</div>
+                <div className="text-xs text-muted-foreground">— Adios &amp; Annie ฝากถึงนักผจญภัย</div>
+              </div>
+            </div>
+            <p
+              className="whitespace-pre-line text-[15px] leading-relaxed"
+              style={{ fontFamily: "var(--font-body), var(--font-thai)", color: "var(--ink)" }}
+            >
+              {`เหล่านักผจญภัยเอ๋ย พวกเรารู้สึกขอบคุณพวกคุณมากจริงๆ ทียินดีช่วยพวกเราปราบปรามปีศาจและภัยคุกคาม
+
+สิ่งที่พวกเราตอบแทนได้มิใช่รางวัลหรือเกียรติยศ แต่สิ่งนั้นเอง คือ ความทุ่มเทในการทำภารกิจเพื่อความแข็งแกร่งของร่างกายเจ้านั่นเอง ฮ่าฮ่าฮ่า
+
+ขุมทรัพย์ที่แท้จริงน่ะหรือ? ก็คือร่างกายของเจ้า ที่จะใช้ยืดหยัดเพื่อหมู่บ้านแห่งนี้ เพื่อสหาย เพื่อครอบครัว เพื่อตัวเจ้า!`}
+            </p>
+            <div className="mt-5 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setHelpOpen(false)}
+                className="rounded-full bg-[var(--wood-deep)] px-5 py-2 text-sm font-bold text-[var(--parchment)] shadow"
+              >
+                ปิดบันทึก
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
