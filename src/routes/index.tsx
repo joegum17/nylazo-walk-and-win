@@ -220,6 +220,15 @@ function Home() {
             📜 เครดิต
           </Link>
           <button
+            type="button"
+            onClick={() => setHelpOpen(true)}
+            className="grid h-7 w-7 place-items-center rounded-full border border-[var(--wood-deep)] bg-[var(--parchment-deep)] text-sm font-extrabold text-[var(--wood-deep)] shadow-sm"
+            aria-label="เปิดบันทึกจากตัวละครหลัก"
+            title="บันทึกจากเหล่าฮีโร่"
+          >
+            ?
+          </button>
+          <button
             onClick={() => supabase.auth.signOut().then(() => nav({ to: "/auth" }))}
             className="rounded-full border border-[var(--border)] bg-white px-2 py-1"
             aria-label="ออกจากระบบ"
