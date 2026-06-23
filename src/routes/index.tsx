@@ -38,7 +38,14 @@ function Home() {
   const [day, setDay] = useState<DayState>(() => loadDay(weather.boss, mode));
   const { steps, setSteps, permission, request } = useSteps(day.steps);
   const [devOpen, setDevOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
   const logoTapsRef = useRef<{ count: number; last: number }>({ count: 0, last: 0 });
+
+  // Real-time sync: keep day.steps in lockstep with the live pedometer counter
+  // so QuestBoard's progress bar + "เก็บรางวัล" gating react immediately.
+  useEffect(() => {
+    setDay((d) => (d.steps === steps ? d : { ...d, steps }));
+  }, [steps]);
 
   useEffect(() => {
     if (!loading && !user) nav({ to: "/auth" });
