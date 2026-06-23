@@ -273,7 +273,7 @@ function Home() {
 
         <div className="relative my-4 grid place-items-center" style={{ height: ringSize + 20, width: ringSize + 20 }}>
           <ItemRing items={day.items} size={ringSize} />
-          <Character gender={player.gender} onFlip={blocked ? undefined : flip} size={200} />
+          <Character gender={player.gender} onFlip={blocked ? undefined : flip} size={200} equipped={player.equipped ?? []} />
         </div>
 
         <div className="mb-3 flex flex-wrap items-center justify-center gap-2 text-xs">
