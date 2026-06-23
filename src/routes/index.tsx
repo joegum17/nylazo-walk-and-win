@@ -38,7 +38,14 @@ function Home() {
   const [day, setDay] = useState<DayState>(() => loadDay(weather.boss, mode));
   const { steps, setSteps, permission, request } = useSteps(day.steps);
   const [devOpen, setDevOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
   const logoTapsRef = useRef<{ count: number; last: number }>({ count: 0, last: 0 });
+
+  // Real-time sync: keep day.steps in lockstep with the live pedometer counter
+  // so QuestBoard's progress bar + "เก็บรางวัล" gating react immediately.
+  useEffect(() => {
+    setDay((d) => (d.steps === steps ? d : { ...d, steps }));
+  }, [steps]);
 
   useEffect(() => {
     if (!loading && !user) nav({ to: "/auth" });
@@ -213,6 +220,15 @@ function Home() {
             📜 เครดิต
           </Link>
           <button
+            type="button"
+            onClick={() => setHelpOpen(true)}
+            className="grid h-7 w-7 place-items-center rounded-full border border-[var(--wood-deep)] bg-[var(--parchment-deep)] text-sm font-extrabold text-[var(--wood-deep)] shadow-sm"
+            aria-label="เปิดบันทึกจากตัวละครหลัก"
+            title="บันทึกจากเหล่าฮีโร่"
+          >
+            ?
+          </button>
+          <button
             onClick={() => supabase.auth.signOut().then(() => nav({ to: "/auth" }))}
             className="rounded-full border border-[var(--border)] bg-white px-2 py-1"
             aria-label="ออกจากระบบ"
@@ -237,8 +253,9 @@ function Home() {
             <button
               key={m}
               type="button"
-              onClick={() => setMode(m)}
-              className="px-4 py-1.5 text-xs font-bold transition"
+              onClick={() => !blocked && setMode(m)}
+              disabled={blocked}
+              className="px-4 py-1.5 text-xs font-bold transition disabled:cursor-not-allowed disabled:opacity-60"
               style={{
                 background: mode === m ? "var(--wood-deep)" : "transparent",
                 color: mode === m ? "var(--parchment)" : "var(--ink)",
@@ -249,7 +266,9 @@ function Home() {
           ))}
         </div>
         <p className="mt-1 text-[10px] text-muted-foreground">
-          กระเป๋าไอเทมโหมด Normal และ Hard แยกขาดจากกัน
+          {blocked && !dialogueOpen
+            ? "🔒 ล็อกการสลับโหมดเมื่อพิชิตบอสประจำวันแล้ว"
+            : "กระเป๋าไอเทมโหมด Normal และ Hard แยกขาดจากกัน"}
         </p>
 
         <div className="relative my-4 grid place-items-center" style={{ height: ringSize + 20, width: ringSize + 20 }}>
@@ -408,6 +427,53 @@ function Home() {
               </button>
             </div>
             <p className="mt-3 text-[10px] opacity-60">เคล็ดลับ: แตะโลโก้ "Nylazo" 5 ครั้งติดเพื่อเปิดเมนูนี้</p>
+          </div>
+        </div>
+      )}
+
+      {/* Help Note — letter from the heroes. Open via "?" button in header. */}
+      {helpOpen && (
+        <div
+          className="fixed inset-0 z-[55] grid place-items-center bg-black/55 p-4"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div
+            className="parchment-panel relative w-full max-w-lg rounded-2xl p-6 shadow-2xl"
+            style={{
+              backgroundImage:
+                "repeating-linear-gradient(0deg, transparent 0 28px, rgba(120,80,40,0.08) 28px 29px)",
+              border: "2px solid var(--wood-deep)",
+            }}
+          >
+            <div className="mb-3 flex items-center gap-3">
+              <div className="grid h-12 w-12 place-items-center rounded-full bg-[var(--wood-deep)] text-2xl text-[var(--parchment)]">
+                ✉️
+              </div>
+              <div>
+                <div className="font-display text-lg leading-none">บันทึกจากเหล่าฮีโร่</div>
+                <div className="text-xs text-muted-foreground">— Adios &amp; Annie ฝากถึงนักผจญภัย</div>
+              </div>
+            </div>
+            <p
+              className="whitespace-pre-line text-[15px] leading-relaxed"
+              style={{ fontFamily: "var(--font-body), var(--font-thai)", color: "var(--ink)" }}
+            >
+              {`เหล่านักผจญภัยเอ๋ย พวกเรารู้สึกขอบคุณพวกคุณมากจริงๆ ทียินดีช่วยพวกเราปราบปรามปีศาจและภัยคุกคาม
+
+สิ่งที่พวกเราตอบแทนได้มิใช่รางวัลหรือเกียรติยศ แต่สิ่งนั้นเอง คือ ความทุ่มเทในการทำภารกิจเพื่อความแข็งแกร่งของร่างกายเจ้านั่นเอง ฮ่าฮ่าฮ่า
+
+ขุมทรัพย์ที่แท้จริงน่ะหรือ? ก็คือร่างกายของเจ้า ที่จะใช้ยืดหยัดเพื่อหมู่บ้านแห่งนี้ เพื่อสหาย เพื่อครอบครัว เพื่อตัวเจ้า!`}
+            </p>
+            <div className="mt-5 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setHelpOpen(false)}
+                className="rounded-full bg-[var(--wood-deep)] px-5 py-2 text-sm font-bold text-[var(--parchment)] shadow"
+              >
+                ปิดบันทึก
+              </button>
+            </div>
           </div>
         </div>
       )}
