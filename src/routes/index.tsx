@@ -253,8 +253,9 @@ function Home() {
             <button
               key={m}
               type="button"
-              onClick={() => setMode(m)}
-              className="px-4 py-1.5 text-xs font-bold transition"
+              onClick={() => !blocked && setMode(m)}
+              disabled={blocked}
+              className="px-4 py-1.5 text-xs font-bold transition disabled:cursor-not-allowed disabled:opacity-60"
               style={{
                 background: mode === m ? "var(--wood-deep)" : "transparent",
                 color: mode === m ? "var(--parchment)" : "var(--ink)",
@@ -265,7 +266,9 @@ function Home() {
           ))}
         </div>
         <p className="mt-1 text-[10px] text-muted-foreground">
-          กระเป๋าไอเทมโหมด Normal และ Hard แยกขาดจากกัน
+          {blocked && !dialogueOpen
+            ? "🔒 ล็อกการสลับโหมดเมื่อพิชิตบอสประจำวันแล้ว"
+            : "กระเป๋าไอเทมโหมด Normal และ Hard แยกขาดจากกัน"}
         </p>
 
         <div className="relative my-4 grid place-items-center" style={{ height: ringSize + 20, width: ringSize + 20 }}>
