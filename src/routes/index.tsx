@@ -415,6 +415,56 @@ function Home() {
               <button
                 type="button"
                 onClick={() => {
+                  const allIds = Object.keys(ACCESSORIES);
+                  setPlayer((p) => ({ ...p, accessories: allIds }));
+                  setDevOpen(false);
+                  toast.success(`🛠️ ปลดล็อกเครื่องประดับครบ ${allIds.length} ชิ้น`);
+                }}
+                className="w-full rounded-lg border border-yellow-500 px-3 py-2 text-sm font-semibold"
+              >
+                💍 ปลดล็อกเครื่องประดับทั้งหมด
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setDay((d) => ({ ...d, locked: false, bossDefeatedToday: false }));
+                  setDevOpen(false);
+                  toast.success("🛠️ ปลดล็อก — ตีบอสซ้ำได้ไม่จำกัด");
+                }}
+                className="w-full rounded-lg border border-yellow-500 px-3 py-2 text-sm font-semibold"
+              >
+                ♾️ ปลดล็อกตีบอสไม่จำกัด
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const allIds = Object.keys(ACCESSORIES);
+                  setPlayer((p) => ({
+                    ...p,
+                    level: p.level + 5,
+                    shields: 0,
+                    accessories: allIds,
+                    equipped: allIds.slice(0, MAX_EQUIPPED),
+                    dialogueSeen: true,
+                  }));
+                  setDay((d) => ({
+                    ...d,
+                    locked: false,
+                    bossDefeatedToday: false,
+                    quests: d.quests.map((q) => ({ ...q, completed: true })),
+                    items: [...d.items, randomItem(), randomItem(), randomItem()],
+                  }));
+                  setSteps((s) => s + 10000);
+                  setDevOpen(false);
+                  toast.success("🛠️ GOD MODE — ของครบ + ตีบอสได้ไม่จำกัด");
+                }}
+                className="w-full rounded-lg bg-yellow-500 px-3 py-2 text-sm font-extrabold text-black hover:bg-yellow-400"
+              >
+                👑 GOD MODE (ทุกอย่าง + ไม่จำกัด)
+              </button>
+              <button
+                type="button"
+                onClick={() => {
                   const fresh = freshDay(weather.boss, mode);
                   setDay(fresh);
                   setSteps(0);
