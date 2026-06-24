@@ -117,7 +117,7 @@ export function BossArena({
     setTimeout(() => setFloats((arr) => arr.filter((f) => f.id !== id)), 900);
 
     // Boss counter-attacks ~70% of the time, slight delay
-    if (Math.random() < 0.7) setTimeout(bossCounter, 380);
+    if (Math.random() < 0.4) setTimeout(bossCounter, 380);
   }
 
   useEffect(() => {
