@@ -89,14 +89,11 @@ export function BossArena({
 
   function bossCounter() {
     if (won) return;
-    // small counter-attack: 4..12 base, +variant bonus
-    const dmg = 4 + Math.floor(Math.random() * 9) + (isVariant ? 3 : 0);
+    // very light counter-attack: 1..3 base (+1 for variant boss)
+    const dmg = 1 + Math.floor(Math.random() * 3) + (isVariant ? 1 : 0);
     setPlayerHurt(true);
     setTimeout(() => setPlayerHurt(false), 350);
-    setPlayerHp((h) => {
-      const next = Math.max(0, h - dmg);
-      return next;
-    });
+    setPlayerHp((h) => Math.max(0, h - dmg));
     const id = ++idRef.current;
     setFloats((arr) => [...arr, { id, value: dmg, x: 8 + Math.random() * 14, color: "#dc2626" }]);
     setTimeout(() => setFloats((arr) => arr.filter((f) => f.id !== id)), 900);
