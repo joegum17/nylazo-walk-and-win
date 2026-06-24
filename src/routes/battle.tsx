@@ -110,6 +110,7 @@ function Battle() {
         steps={day.steps}
         variant={!!day.variantBoss}
         equippedBonus={equippedBonus}
+        equipped={player.equipped ?? []}
         onWin={handleWin}
         onFlee={() => nav({ to: "/" })}
       />
