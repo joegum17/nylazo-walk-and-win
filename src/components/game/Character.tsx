@@ -12,12 +12,16 @@ interface Props {
   equipped?: string[];
 }
 
-// Slot positions as percentages of the character box.
-// Each slot can stack multiple accessories with a small offset.
-const SLOT_POS: Record<AccessoryDef["slot"], { top: string; left: string; dx: number; dy: number }> = {
-  head: { top: "4%", left: "50%", dx: 22, dy: 0 },
-  neck: { top: "44%", left: "50%", dx: 20, dy: 0 },
-  ring: { top: "70%", left: "62%", dx: 18, dy: 4 },
+// Slot positions tuned so accessories sit on the right body parts:
+// - eyes: on the face, where the eyes are
+// - body: covers the torso (raincoat — larger emoji)
+// - head: pinned to the right side of the head (bow)
+const SLOT_POS: Record<AccessoryDef["slot"], {
+  top: string; left: string; sizeMul: number;
+}> = {
+  eyes: { top: "32%", left: "50%", sizeMul: 0.26 },
+  body: { top: "58%", left: "50%", sizeMul: 0.55 },
+  head: { top: "8%",  left: "72%", sizeMul: 0.24 },
 };
 
 export function Character({ gender, onFlip, size = 220, className = "", equipped = [] }: Props) {
@@ -33,14 +37,12 @@ export function Character({ gender, onFlip, size = 220, className = "", equipped
     }, 300);
   }
 
-  // Group equipped by slot to stack neatly
-  const bySlot: Record<string, AccessoryDef[]> = { head: [], neck: [], ring: [] };
+  // Only one item per slot — last one wins if multiple of same slot equipped.
+  const bySlot: Partial<Record<AccessoryDef["slot"], AccessoryDef>> = {};
   for (const id of equipped) {
     const a = ACCESSORIES[id];
-    if (a) bySlot[a.slot].push(a);
+    if (a) bySlot[a.slot] = a;
   }
-
-  const emojiSize = Math.round(size * 0.18);
 
   return (
     <button
@@ -52,7 +54,7 @@ export function Character({ gender, onFlip, size = 220, className = "", equipped
       style={{ width: size, height: size, perspective: "800px" }}
     >
       <div
-        className={flipping ? "animate-flip" : ""}
+        className={flipping ? "animate-flip" : "char-idle"}
         style={{ width: "100%", height: "100%", transformStyle: "preserve-3d", position: "relative" }}
       >
         <img
@@ -73,42 +75,40 @@ export function Character({ gender, onFlip, size = 220, className = "", equipped
           }}
         />
 
-        {/* Equipped accessory overlays — render on top of the sprite */}
         {(Object.keys(bySlot) as Array<AccessoryDef["slot"]>).map((slot) => {
-          const items = bySlot[slot];
-          if (!items.length) return null;
+          const a = bySlot[slot];
+          if (!a) return null;
           const pos = SLOT_POS[slot];
-          return items.map((a, i) => {
-            const offset = i - (items.length - 1) / 2;
-            return (
-              <span
-                key={`${slot}-${a.id}`}
-                aria-hidden
-                title={a.name}
-                style={{
-                  position: "absolute",
-                  top: pos.top,
-                  left: pos.left,
-                  transform: `translate(calc(-50% + ${offset * pos.dx}px), ${offset * pos.dy}px)`,
-                  fontSize: emojiSize,
-                  lineHeight: 1,
-                  filter: "drop-shadow(0 2px 3px rgba(0,0,0,0.45))",
-                  pointerEvents: "none",
-                  animation: "accessoryFloat 2.6s ease-in-out infinite",
-                }}
-              >
-                {a.emoji}
-              </span>
-            );
-          });
+          return (
+            <span
+              key={slot}
+              aria-hidden
+              title={a.name}
+              style={{
+                position: "absolute",
+                top: pos.top,
+                left: pos.left,
+                transform: "translate(-50%, -50%)",
+                fontSize: Math.round(size * pos.sizeMul),
+                lineHeight: 1,
+                filter: "drop-shadow(0 2px 3px rgba(0,0,0,0.45))",
+                pointerEvents: "none",
+              }}
+            >
+              {a.emoji}
+            </span>
+          );
         })}
       </div>
 
       <style>{`
-        @keyframes accessoryFloat {
-          0%, 100% { translate: 0 0; }
-          50% { translate: 0 -2px; }
+        @keyframes charIdle {
+          0%, 100% { transform: translateY(0) rotate(-1.2deg); }
+          25%      { transform: translateY(-4px) rotate(0.8deg); }
+          50%      { transform: translateY(-6px) rotate(1.2deg); }
+          75%      { transform: translateY(-3px) rotate(-0.6deg); }
         }
+        .char-idle { animation: charIdle 2.6s ease-in-out infinite; transform-origin: 50% 90%; }
       `}</style>
     </button>
   );

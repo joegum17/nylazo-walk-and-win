@@ -1,64 +1,56 @@
 import type { BossKey } from "./types";
 
+export type AccessorySlot = "eyes" | "body" | "head";
+
 export interface AccessoryDef {
   id: string;
   name: string;
   emoji: string;
-  slot: "neck" | "ring" | "head";
-  bonus: number; // flat damage bonus when equipped
+  slot: AccessorySlot;
+  bonus: number;
   fromBoss: BossKey;
   flavor: string;
 }
 
 export const ACCESSORIES: Record<string, AccessoryDef> = {
-  fire_amulet: {
-    id: "fire_amulet",
-    name: "สร้อยเปลวเพลิง",
-    emoji: "🔥",
-    slot: "neck",
+  sunglasses: {
+    id: "sunglasses",
+    name: "แว่นกันแดด",
+    emoji: "🕶️",
+    slot: "eyes",
     bonus: 12,
     fromBoss: "fire",
-    flavor: "ตกผลึกจากเขี้ยวอสูรไฟ — อุ่นมือเมื่อต่อสู้",
+    flavor: "บังแดดอสูรไฟ — มองทะลุเปลวเพลิงได้",
   },
-  wind_ring: {
-    id: "wind_ring",
-    name: "แหวนสายลม",
-    emoji: "🌪️",
-    slot: "ring",
+  raincoat: {
+    id: "raincoat",
+    name: "เสื้อกันฝน",
+    emoji: "🧥",
+    slot: "body",
     bonus: 10,
-    fromBoss: "wind",
-    flavor: "เบาเหมือนขนนก เร่งจังหวะการโจมตี",
+    fromBoss: "cloud",
+    flavor: "กันฝนเมฆดราม่า ไม่เปียกไม่หนาว",
   },
-  cloud_earring: {
-    id: "cloud_earring",
-    name: "ต่างหูสายฝน",
-    emoji: "💧",
+  pink_bow: {
+    id: "pink_bow",
+    name: "โบว์สีชมพู",
+    emoji: "🎀",
     slot: "head",
     bonus: 9,
-    fromBoss: "cloud",
-    flavor: "หยาดน้ำค้างบรรจุพลังเมฆฝน",
-  },
-  slime_brooch: {
-    id: "slime_brooch",
-    name: "เข็มกลัดยาเขียว",
-    emoji: "🧪",
-    slot: "neck",
-    bonus: 10,
     fromBoss: "slime",
-    flavor: "กลั่นจากเมือกบอสสไลม์ — เผ็ดร้อนไม่กลัวเชื้อโรค",
-  },
-  ice_crown: {
-    id: "ice_crown",
-    name: "มงกุฎน้ำแข็ง",
-    emoji: "❄️",
-    slot: "head",
-    bonus: 14,
-    fromBoss: "ice",
-    flavor: "เย็นจับใจ ทุกการตีติดเศษน้ำแข็ง",
+    flavor: "ผูกบนหัวฝั่งขวา เพิ่มเสน่ห์ +∞",
   },
 };
 
+// Map each boss to a guaranteed accessory drop (5 bosses → 3 items, repeats OK).
+const BOSS_DROP: Record<BossKey, string> = {
+  fire: "sunglasses",
+  ice: "sunglasses",
+  cloud: "raincoat",
+  wind: "raincoat",
+  slime: "pink_bow",
+};
+
 export function dropFromBoss(boss: BossKey): AccessoryDef {
-  const list = Object.values(ACCESSORIES).filter((a) => a.fromBoss === boss);
-  return list[Math.floor(Math.random() * list.length)] ?? ACCESSORIES.fire_amulet;
+  return ACCESSORIES[BOSS_DROP[boss]] ?? ACCESSORIES.sunglasses;
 }
