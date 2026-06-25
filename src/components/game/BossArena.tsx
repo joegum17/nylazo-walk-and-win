@@ -66,7 +66,7 @@ export function BossArena({
   const dirRef = useRef(1);
   const rafRef = useRef<number | null>(null);
 
-  const baseDamage = Math.max(25, Math.floor(30 + steps / 10) + equippedBonus);
+  const baseDamage = Math.max(6, Math.floor(8 + steps / 40) + Math.floor(equippedBonus / 3));
 
   // Drive the meter via rAF for smooth oscillation
   useEffect(() => {
