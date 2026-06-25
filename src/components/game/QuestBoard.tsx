@@ -30,9 +30,13 @@ export function QuestBoard({ day, boss, onComplete, onStart, onEnterBoss, disabl
 
   const defs = questsFor(day.mode);
   const special = specialQuestFor(boss);
+  // Dynamic quest open hour: 05:00 during first 7 days, else (avg login - 1h) for today's weekday.
+  const dynamicHour = getTodayQuestOpenHour();
+  const newbie = isNewPlayer();
+  const ageDays = getAccountAgeDays();
   const allRows = [
-    ...defs.map((q) => ({ id: q.id, title: q.title, detail: q.detail, opensAt: q.opensAt, type: q.type, target: q.target, expireMin: q.expireMin })),
-    { id: "special", title: special.title, detail: special.detail, opensAt: 0, type: "special" as const, target: undefined, expireMin: undefined },
+    ...defs.map((q) => ({ id: q.id, title: q.title, detail: q.detail, opensAt: dynamicHour, type: q.type, target: q.target, expireMin: q.expireMin })),
+    { id: "special", title: special.title, detail: special.detail, opensAt: dynamicHour, type: "special" as const, target: undefined, expireMin: undefined },
   ];
 
   const completedCount = day.quests.filter((q) => q.completed).length;
