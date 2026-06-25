@@ -79,6 +79,7 @@ export function Character({ gender, onFlip, size = 220, className = "", equipped
           const a = bySlot[slot];
           if (!a) return null;
           const pos = SLOT_POS[slot];
+          const px = Math.round(size * pos.sizeMul);
           return (
             <span
               key={slot}
@@ -89,13 +90,14 @@ export function Character({ gender, onFlip, size = 220, className = "", equipped
                 top: pos.top,
                 left: pos.left,
                 transform: "translate(-50%, -50%)",
-                fontSize: Math.round(size * pos.sizeMul),
-                lineHeight: 1,
-                filter: "drop-shadow(0 2px 3px rgba(0,0,0,0.45))",
+                width: px,
+                height: px,
+                lineHeight: 0,
+                filter: "drop-shadow(0 2px 2px rgba(43,30,23,0.45))",
                 pointerEvents: "none",
               }}
             >
-              {a.emoji}
+              <AccessoryLineArt id={a.id} size={px} />
             </span>
           );
         })}
