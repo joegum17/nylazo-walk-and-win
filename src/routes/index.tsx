@@ -52,6 +52,9 @@ function Home() {
     if (!loading && !user) nav({ to: "/auth" });
   }, [loading, user, nav]);
 
+  // Record this login (first time per local day) so future weeks can compute averages.
+  useEffect(() => { recordLogin(); }, []);
+
   // Reload day state when mode switches (separate inventories per mode).
   // Dialogue is global (player.dialogueSeen) so it will NOT replay on mode switch.
   useEffect(() => {
