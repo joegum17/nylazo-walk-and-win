@@ -66,7 +66,7 @@ export function BossArena({
   const dirRef = useRef(1);
   const rafRef = useRef<number | null>(null);
 
-  const baseDamage = Math.max(25, Math.floor(30 + steps / 10) + equippedBonus);
+  const baseDamage = Math.max(6, Math.floor(8 + steps / 40) + Math.floor(equippedBonus / 3));
 
   // Drive the meter via rAF for smooth oscillation
   useEffect(() => {
@@ -102,7 +102,7 @@ export function BossArena({
   function attack() {
     if (won) return;
     const z = zoneAt(meterRef.current);
-    const dealt = Math.floor((baseDamage + Math.random() * 12) * z.mult);
+    const dealt = Math.max(1, Math.floor((baseDamage + Math.random() * 4) * z.mult));
 
     setAttacking(true);
     setShake(true);
