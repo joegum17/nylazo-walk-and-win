@@ -102,7 +102,7 @@ export function BossArena({
   function attack() {
     if (won) return;
     const z = zoneAt(meterRef.current);
-    const dealt = Math.floor((baseDamage + Math.random() * 12) * z.mult);
+    const dealt = Math.max(1, Math.floor((baseDamage + Math.random() * 4) * z.mult));
 
     setAttacking(true);
     setShake(true);
