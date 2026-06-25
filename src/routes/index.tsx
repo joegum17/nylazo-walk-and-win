@@ -15,6 +15,7 @@ import {
 } from "@/lib/game/storage";
 import type { DayState, Gender, Mode, PlayerState } from "@/lib/game/types";
 import { ACCESSORIES } from "@/lib/game/accessories";
+import { recordLogin } from "@/lib/game/behavior";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/")({
@@ -50,6 +51,9 @@ function Home() {
   useEffect(() => {
     if (!loading && !user) nav({ to: "/auth" });
   }, [loading, user, nav]);
+
+  // Record this login (first time per local day) so future weeks can compute averages.
+  useEffect(() => { recordLogin(); }, []);
 
   // Reload day state when mode switches (separate inventories per mode).
   // Dialogue is global (player.dialogueSeen) so it will NOT replay on mode switch.

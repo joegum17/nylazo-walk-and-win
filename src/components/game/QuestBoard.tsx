@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { questsFor, specialQuestFor } from "@/lib/game/quests";
 import type { DayState, BossKey } from "@/lib/game/types";
 import { msUntilMidnight } from "@/lib/game/storage";
+import { getTodayQuestOpenHour, isNewPlayer, getAccountAgeDays } from "@/lib/game/behavior";
 
 interface Props {
   day: DayState;
@@ -29,9 +30,13 @@ export function QuestBoard({ day, boss, onComplete, onStart, onEnterBoss, disabl
 
   const defs = questsFor(day.mode);
   const special = specialQuestFor(boss);
+  // Dynamic quest open hour: 05:00 during first 7 days, else (avg login - 1h) for today's weekday.
+  const dynamicHour = getTodayQuestOpenHour();
+  const newbie = isNewPlayer();
+  const ageDays = getAccountAgeDays();
   const allRows = [
-    ...defs.map((q) => ({ id: q.id, title: q.title, detail: q.detail, opensAt: q.opensAt, type: q.type, target: q.target, expireMin: q.expireMin })),
-    { id: "special", title: special.title, detail: special.detail, opensAt: 0, type: "special" as const, target: undefined, expireMin: undefined },
+    ...defs.map((q) => ({ id: q.id, title: q.title, detail: q.detail, opensAt: dynamicHour, type: q.type, target: q.target, expireMin: q.expireMin })),
+    { id: "special", title: special.title, detail: special.detail, opensAt: dynamicHour, type: "special" as const, target: undefined, expireMin: undefined },
   ];
 
   const completedCount = day.quests.filter((q) => q.completed).length;
@@ -47,6 +52,11 @@ export function QuestBoard({ day, boss, onComplete, onStart, onEnterBoss, disabl
           รีเฟรชใน {fmtCountdown(msUntilMidnight())}
         </span>
       </div>
+      <p className="mb-3 text-[11px]" style={{ color: "var(--parchment)" }}>
+        {newbie
+          ? `🛡️ สัปดาห์แรก (วันที่ ${ageDays}/7) — เควสต์เปิดเวลามาตรฐาน ${String(dynamicHour).padStart(2, "0")}:00 น.`
+          : `🧭 ระบบ Dynamic Quest: วันนี้เปิดตอน ${String(dynamicHour).padStart(2, "0")}:00 น. (อิงพฤติกรรมล็อกอินของคุณ)`}
+      </p>
 
       <ul className="space-y-2">
         {allRows.map((row) => {
