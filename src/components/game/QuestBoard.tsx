@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { questsFor, specialQuestFor } from "@/lib/game/quests";
 import type { DayState, BossKey } from "@/lib/game/types";
 import { msUntilMidnight } from "@/lib/game/storage";
+import { getTodayQuestOpenHour, isNewPlayer, getAccountAgeDays } from "@/lib/game/behavior";
 
 interface Props {
   day: DayState;
