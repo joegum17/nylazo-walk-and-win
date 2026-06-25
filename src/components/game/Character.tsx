@@ -19,10 +19,79 @@ interface Props {
 const SLOT_POS: Record<AccessoryDef["slot"], {
   top: string; left: string; sizeMul: number;
 }> = {
-  eyes: { top: "32%", left: "50%", sizeMul: 0.26 },
-  body: { top: "58%", left: "50%", sizeMul: 0.55 },
-  head: { top: "8%",  left: "72%", sizeMul: 0.24 },
+  eyes: { top: "33%", left: "50%", sizeMul: 0.36 },
+  body: { top: "62%", left: "50%", sizeMul: 0.78 },
+  head: { top: "10%", left: "72%", sizeMul: 0.28 },
 };
+
+const INK = "#2b1e17";
+const INK_SOFT = "#4a342a";
+
+function AccessoryLineArt({ id, size }: { id: string; size: number }) {
+  const common = {
+    width: size,
+    height: size,
+    viewBox: "0 0 100 100",
+    fill: "none",
+    stroke: INK,
+    strokeWidth: 3.2,
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const,
+  };
+  if (id === "sunglasses") {
+    return (
+      <svg {...common}>
+        <path d="M8 46 H92" />
+        <path d="M14 44 Q12 70 30 70 Q48 70 48 50 Q48 44 42 42 H18 Q14 42 14 46 Z"
+          fill="rgba(43,30,23,0.78)" />
+        <path d="M86 44 Q88 70 70 70 Q52 70 52 50 Q52 44 58 42 H82 Q86 42 86 46 Z"
+          fill="rgba(43,30,23,0.78)" />
+        <path d="M20 50 Q24 54 28 52" stroke="#f5e6c8" strokeWidth="2.2" />
+        <path d="M60 50 Q64 54 68 52" stroke="#f5e6c8" strokeWidth="2.2" />
+      </svg>
+    );
+  }
+  if (id === "raincoat") {
+    return (
+      <svg {...common}>
+        {/* hood */}
+        <path d="M28 26 Q50 8 72 26 Q70 36 50 38 Q30 36 28 26 Z"
+          fill="#c98a3d" stroke={INK} />
+        {/* shoulders + body */}
+        <path d="M20 40 Q26 32 38 32 L62 32 Q74 32 80 40 L86 86 Q70 92 50 92 Q30 92 14 86 Z"
+          fill="#e8a93d" stroke={INK} />
+        {/* center seam / buttons */}
+        <path d="M50 38 V90" stroke={INK_SOFT} strokeWidth="2" />
+        <circle cx="50" cy="50" r="2" fill={INK} />
+        <circle cx="50" cy="62" r="2" fill={INK} />
+        <circle cx="50" cy="74" r="2" fill={INK} />
+        {/* collar */}
+        <path d="M38 32 L50 44 L62 32" stroke={INK} />
+        {/* sleeve folds */}
+        <path d="M22 48 Q18 60 22 74" stroke={INK_SOFT} strokeWidth="2" />
+        <path d="M78 48 Q82 60 78 74" stroke={INK_SOFT} strokeWidth="2" />
+      </svg>
+    );
+  }
+  if (id === "pink_bow") {
+    return (
+      <svg {...common}>
+        {/* left loop */}
+        <path d="M50 50 Q18 28 14 50 Q18 72 50 50 Z" fill="#f7a8c4" stroke={INK} />
+        {/* right loop */}
+        <path d="M50 50 Q82 28 86 50 Q82 72 50 50 Z" fill="#f7a8c4" stroke={INK} />
+        {/* knot */}
+        <ellipse cx="50" cy="50" rx="8" ry="10" fill="#e87aa4" stroke={INK} />
+        <path d="M46 46 Q50 50 46 54" stroke={INK} strokeWidth="2" />
+        <path d="M54 46 Q50 50 54 54" stroke={INK} strokeWidth="2" />
+        {/* tails */}
+        <path d="M44 58 Q40 78 34 82" stroke={INK} fill="#f7a8c4" />
+        <path d="M56 58 Q60 78 66 82" stroke={INK} fill="#f7a8c4" />
+      </svg>
+    );
+  }
+  return null;
+}
 
 export function Character({ gender, onFlip, size = 220, className = "", equipped = [] }: Props) {
   const [flipping, setFlipping] = useState(false);
