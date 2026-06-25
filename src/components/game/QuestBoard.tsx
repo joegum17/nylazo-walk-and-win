@@ -52,6 +52,11 @@ export function QuestBoard({ day, boss, onComplete, onStart, onEnterBoss, disabl
           รีเฟรชใน {fmtCountdown(msUntilMidnight())}
         </span>
       </div>
+      <p className="mb-3 text-[11px]" style={{ color: "var(--parchment)" }}>
+        {newbie
+          ? `🛡️ สัปดาห์แรก (วันที่ ${ageDays}/7) — เควสต์เปิดเวลามาตรฐาน ${String(dynamicHour).padStart(2, "0")}:00 น.`
+          : `🧭 ระบบ Dynamic Quest: วันนี้เปิดตอน ${String(dynamicHour).padStart(2, "0")}:00 น. (อิงพฤติกรรมล็อกอินของคุณ)`}
+      </p>
 
       <ul className="space-y-2">
         {allRows.map((row) => {
