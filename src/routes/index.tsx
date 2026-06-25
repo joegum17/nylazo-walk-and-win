@@ -15,6 +15,7 @@ import {
 } from "@/lib/game/storage";
 import type { DayState, Gender, Mode, PlayerState } from "@/lib/game/types";
 import { ACCESSORIES } from "@/lib/game/accessories";
+import { recordLogin } from "@/lib/game/behavior";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/")({
